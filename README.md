@@ -1,7 +1,7 @@
 # OpenHGNN
 This is an open-source toolkit for Heterogeneous Graph Neural Network(OpenHGNN) based on [DGL [Deep Graph Library]](https://github.com/dmlc/dgl) and [PyTorch](https://pytorch.org/). We integrate SOTA models of heterogeneous graph.
 
-|**[Documentation](https://openhgnn.readthedocs.io/en/latest/index.html)**|[**Space4HGNN**](./space4hgnn)
+|**[Documentation](https://openhgnn.readthedocs.io/en/latest/index.html)**|
 
 ## Key Features
 
@@ -78,6 +78,8 @@ e.g.:
 ```bash
 python main.py -m GTN -d imdb4GTN -t node_classification -g 0 --use_best_config
 ```
+
+It is under development, and we release it in a nightly build version. For now, we just give some new models, such as HetGNN, NSHE, GTN, MAGNN, RSHN.
 
 **Note**: If you are interested in some model, you can refer to the below models list.
 

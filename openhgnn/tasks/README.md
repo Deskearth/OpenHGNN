@@ -28,8 +28,6 @@ The task means downstream task. So it is related to dataset closely.
 
 - ##### Link prediction
 
-  - 
-
 - **Recommendation**
 
 ### How to build a new trainerflow
