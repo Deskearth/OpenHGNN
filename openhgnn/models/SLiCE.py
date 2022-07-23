@@ -10,7 +10,6 @@ import dgl.nn as dglnn
 from . import BaseModel, register_model
 from .CompGCN import CompGraphConvLayer
 import os
-from gensim.models import Word2Vec
 
 def get_norm_id(id_map, some_id):
     #如果不存在，返回一个id最大值
@@ -18,9 +17,6 @@ def get_norm_id(id_map, some_id):
         id_map[some_id] = len(id_map)
     return id_map[some_id]
 
-"""
-从大图中根据一组边获得一个子图
-"""
 def norm_graph(node_id_map, edge_id_map, edge_list):
     norm_edge_list = []
     for e in edge_list:
@@ -301,6 +297,7 @@ class SLiCE(BaseModel):
                 walk = dgl.sampling.node2vec_random_walk(G, torch.tensor(nodes), 1, 1, walk_length=80-1).tolist()#len=walk_length+1
                 walks.extend(walk)
             walks = [list(map(str, walk)) for walk in walks]
+            from gensim.models import Word2Vec
             model = Word2Vec(
                 walks,
                 size=base_embedding_dim,

@@ -5,7 +5,8 @@ import torch as th
 from scipy.sparse import coo_matrix
 import numpy as np
 import random
-from . import load_HIN, load_KG, load_OGB, BEST_CONFIGS
+from . import load_HIN, load_KG, load_OGB
+from .best_config import BEST_CONFIGS
 
 
 def sum_up_params(model):
@@ -66,20 +67,20 @@ def add_reverse_edges(hg, copy_ndata=True, copy_edata=True, ignore_one_type=True
 def set_best_config(args):
     configs = BEST_CONFIGS.get(args.task)
     if configs is None:
-        print('The task do not have a best_config!')
+        print('The task: {} do not have a best_config!'.format(args.task))
         return args
     if args.model not in configs:
-        print('The model is not in the best config.')
+        print('The model: {} is not in the best config.'.format(args.model))
         return args
     configs = configs[args.model]
     for key, value in configs["general"].items():
         args.__setattr__(key, value)
     if args.dataset not in configs:
-        print('The dataset is not in the best config.')
+        print('The dataset: {} is not in the best config of model: {}.'.format(args.dataset, args.model))
         return args
     for key, value in configs[args.dataset].items():
         args.__setattr__(key, value)
-    print('Use the best config.')
+    print('Load the best config of model: {} for dataset: {}.'.format(args.model, args.dataset))
     return args
 
 
@@ -133,6 +134,20 @@ class EarlyStopping(object):
         return self.early_stop
 
     def loss_step(self, loss, model):
+        """
+        
+        Parameters
+        ----------
+        loss Float or torch.Tensor
+        
+        model torch.nn.Module
+
+        Returns
+        -------
+
+        """
+        if isinstance(loss, th.Tensor):
+            loss = loss.item()
         if self.best_loss is None:
             self.best_loss = loss
             self.save_model(model)
@@ -170,7 +185,6 @@ def get_nodes_dict(hg):
 
 def extract_embed(node_embed, input_nodes):
     emb = {}
-
     for ntype, nid in input_nodes.items():
         nid = input_nodes[ntype]
         emb[ntype] = node_embed[ntype][nid]
@@ -195,6 +209,7 @@ def set_random_seed(seed):
     th.manual_seed(seed)
     th.cuda.manual_seed(seed)
     dgl.seed(seed)
+
 
 def com_mult(a, b):
     r1, i1 = a[..., 0], a[..., 1]
@@ -221,8 +236,21 @@ def ccorr(a, b):
     -------
     Tensor, having the same dimension as the input a.
     """
-    import torch.fft as fft
-    return th.irfft(com_mult(conj(th.rfft(a, 1)), th.rfft(b, 1)), 1, signal_sizes=(a.shape[-1],))
+    try:
+        from torch import irfft
+        from torch import rfft
+    except ImportError:
+        from torch.fft import irfft2
+        from torch.fft import rfft2
+        
+        def rfft(x, d):
+            t = rfft2(x, dim=(-d))
+            return th.stack((t.real, t.imag), -1)
+        
+        def irfft(x, d, signal_sizes):
+            return irfft2(th.complex(x[:, :, 0], x[:, :, 1]), s=signal_sizes, dim=(-d))
+
+    return irfft(com_mult(conj(rfft(a, 1)), rfft(b, 1)), 1, signal_sizes=(a.shape[-1],))
 
 
 def transform_relation_graph_list(hg, category, identity=True):
@@ -323,14 +351,88 @@ def print_dict(d, end_string='\n\n'):
 
 
 def extract_metapaths(category, canonical_etypes, self_loop=False):
-    meta_paths = []
+    meta_paths_dict = {}
     for etype in canonical_etypes:
-        if etype[0] == category:
+        if etype[0] in category:
             for dst_e in canonical_etypes:
                 if etype[0] == dst_e[2] and etype[2] == dst_e[0]:
                     if self_loop:
-                        meta_paths.append((etype, dst_e))
+                        mp_name = 'mp' + str(len(meta_paths_dict))
+                        meta_paths_dict[mp_name] = [etype, dst_e]
                     else:
                         if etype[0] != etype[2]:
-                            meta_paths.append((etype, dst_e))
-    return meta_paths
+                            mp_name = 'mp' + str(len(meta_paths_dict))
+                            meta_paths_dict[mp_name] = [etype, dst_e]
+    return meta_paths_dict
+
+# for etype in self.model.hg.etypes:
+# g = self.model.hg[etype]
+# for etype in ['paper-ref-paper','paper-cite-paper']:
+#     g = self.hg[etype]
+#     r = []
+#     for i in self.train_idx:
+#         neigh = g.predecessors(i)
+#         cen_label = self.labels[i]
+#         neigh_label = self.labels[neigh]
+#         if len(neigh) == 0:
+#             pass
+#         else:
+#             r.append((cen_label == neigh_label).sum() / len(neigh))
+#     for i in self.valid_idx:
+#         neigh = g.predecessors(i)
+#         cen_label = self.labels[i]
+#         neigh_label = self.labels[neigh]
+#         if len(neigh) == 0:
+#             pass
+#         else:
+#             r.append((cen_label == neigh_label).sum() / len(neigh))
+#     he = torch.stack(r).mean()
+#     print(etype+ str(he))
+
+def to_hetero_feat(h, type, name):
+    """Feature convert API.
+    
+    It uses information about the type of the specified node
+    to convert features ``h`` in homogeneous graph into a heteorgeneous
+    feature dictionay ``h_dict``.
+    
+    Parameters
+    ----------
+    h: Tensor
+        Input features of homogeneous graph
+    type: Tensor
+        Represent the type of each node or edge with a number.
+        It should correspond to the parameter ``name``.
+    name: list
+        The node or edge types list.
+    
+    Return
+    ------
+    h_dict: dict
+        output feature dictionary of heterogeneous graph
+    
+    Example
+    -------
+    
+    >>> h = torch.tensor([[1, 2, 3],
+                          [1, 1, 1],
+                          [0, 2, 1],
+                          [1, 3, 3],
+                          [2, 1, 1]])
+    >>> print(h.shape)
+    torch.Size([5, 3])
+    >>> type = torch.tensor([0, 1, 0, 0, 1])
+    >>> name = ['author', 'paper']
+    >>> h_dict = to_hetero_feat(h, type, name)
+    >>> print(h_dict)
+    {'author': tensor([[1, 2, 3],
+    [0, 2, 1],
+    [1, 3, 3]]), 'paper': tensor([[1, 1, 1],
+    [2, 1, 1]])}
+    
+    """
+    h_dict = {}
+    for index, ntype in enumerate(name):
+        h_dict[ntype] = h[th.where(type == index)]
+
+    return h_dict

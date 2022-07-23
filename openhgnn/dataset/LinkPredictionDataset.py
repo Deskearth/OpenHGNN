@@ -1,11 +1,14 @@
 import dgl
+import math
+import random
 import numpy as np
 import torch as th
 from dgl.data.knowledge_graph import load_data
 from . import BaseDataset, register_dataset
-from . import AcademicDataset, HGBDataset
+from . import AcademicDataset, HGBDataset, OHGBDataset
 from ..utils import add_reverse_edges
 
+__all__ = ['LinkPredictionDataset', 'HGB_LinkPrediction']
 
 @register_dataset('link_prediction')
 class LinkPredictionDataset(BaseDataset):
@@ -13,12 +16,12 @@ class LinkPredictionDataset(BaseDataset):
     metric: Accuracy, multi-label f1 or multi-class f1. Default: `accuracy`
     """
 
-    def __init__(self, ):
-        super(LinkPredictionDataset, self).__init__()
+    def __init__(self, *args, **kwargs):
+        super(LinkPredictionDataset, self).__init__(*args, **kwargs)
         self.target_link = None
         self.target_link_r = None
 
-    def get_idx(self, val_ratio=0.1, test_ratio=0.2):
+    def get_split(self, val_ratio=0.1, test_ratio=0.2):
         """
         Get subgraphs for train, valid and test.
         Generally, the original will have train_mask and test_mask in edata, or we will split it automatically.
@@ -52,15 +55,15 @@ class LinkPredictionDataset(BaseDataset):
                 random_int = th.randperm(num_edges)
                 val_index = random_int[:int(num_edges * val_ratio)]
                 val_edge = self.g.find_edges(val_index, etype)
-                test_index = random_int[int(num_edges * test_ratio):int(num_edges * test_ratio)]
+                test_index = random_int[int(num_edges * val_ratio):int(num_edges * (test_ratio + val_ratio))]
                 test_edge = self.g.find_edges(test_index, etype)
 
                 val_edge_dict[etype] = val_edge
                 test_edge_dict[etype] = test_edge
                 out_ntypes.append(etype[0])
                 out_ntypes.append(etype[2])
-                # train_graph = dgl.remove_edges(train_graph, th.cat((val_index, test_index)), etype)
-                train_graph = dgl.remove_edges(train_graph, val_index, etype)
+                train_graph = dgl.remove_edges(train_graph, th.cat((val_index, test_index)), etype)
+                # train_graph = dgl.remove_edges(train_graph, val_index, etype)
                 if self.target_link_r is None:
                     pass
                 else:
@@ -101,7 +104,9 @@ class LinkPredictionDataset(BaseDataset):
         test_graph = dgl.heterograph(test_edge_dict,
                                      {ntype: self.g.number_of_nodes(ntype) for ntype in set(out_ntypes)})
 
-        return train_graph, val_graph, test_graph
+        # todo: val/test negative graphs should be created before training rather than
+        #  create them dynamically in every evaluation.
+        return train_graph, val_graph, test_graph, None, None
 
 
 @register_dataset('demo_link_prediction')
@@ -150,8 +155,8 @@ class Test_LinkPrediction(LinkPredictionDataset):
 
 @register_dataset('hin_link_prediction')
 class HIN_LinkPrediction(LinkPredictionDataset):
-    def __init__(self, dataset_name):
-        super(HIN_LinkPrediction, self).__init__()
+    def __init__(self, dataset_name, *args, **kwargs):
+        super(HIN_LinkPrediction, self).__init__(*args, **kwargs)
         self.g = self.load_HIN(dataset_name)
 
     def load_link_pred(self, path):
@@ -252,6 +257,12 @@ class HIN_LinkPrediction(LinkPredictionDataset):
                           ('director', 'director->movie', 'movie'), ('movie', 'movie->actor', 'actor')]
                                     }
         return g
+    
+    def get_split(self, val_ratio=0.1, test_ratio=0.2):
+        if self.dataset_name == 'academic4HetGNN':
+            return None, None, None, None, None
+        else:
+            return super(HIN_LinkPrediction, self).get_split(val_ratio, test_ratio)
 
 
 @register_dataset('HGBl_link_prediction')
@@ -274,8 +285,8 @@ class HGB_LinkPrediction(LinkPredictionDataset):
 
     """
 
-    def __init__(self, dataset_name):
-        super(HGB_LinkPrediction, self).__init__()
+    def __init__(self, dataset_name, *args, **kwargs):
+        super(HGB_LinkPrediction, self).__init__(*args, **kwargs)
         self.dataset_name = dataset_name
         self.target_link_r = None
         if dataset_name == 'HGBl-amazon':
@@ -340,7 +351,7 @@ class HGB_LinkPrediction(LinkPredictionDataset):
             count += self.g.num_nodes(type)
         return node_shift_dict
 
-    def get_idx(self):
+    def get_split(self):
         r"""
         Get graphs for train, valid or test.
 
@@ -378,7 +389,7 @@ class HGB_LinkPrediction(LinkPredictionDataset):
         test_graph = dgl.heterograph(test_edge_dict,
                                      {ntype: self.g.number_of_nodes(ntype) for ntype in set(out_ntypes)})
 
-        return train_graph, val_graph, test_graph
+        return train_graph, val_graph, test_graph, None, None
 
     def save_results(self, hg, score, file_path):
         with hg.local_scope():
@@ -401,6 +412,31 @@ class HGB_LinkPrediction(LinkPredictionDataset):
                     f.write(f"{l}\t{r}\t{edge_type}\t{round(float(c), 4)}\n")
 
 
+@register_dataset('ohgb_link_prediction')
+class OHGB_LinkPrediction(LinkPredictionDataset):
+    def __init__(self, dataset_name, *args, **kwargs):
+        super(OHGB_LinkPrediction, self).__init__(*args, **kwargs)
+        self.dataset_name = dataset_name
+        self.has_feature = True
+        if dataset_name == 'ohgbl-MTWM':
+            dataset = OHGBDataset(name=dataset_name, raw_dir='')
+            g = dataset[0].long()
+            self.target_link = [('user', 'user-buy-spu', 'spu')]
+            self.target_link_r = [('spu', 'user-buy-spu-rev', 'user')]
+            self.node_type = ['user', 'spu']
+        elif dataset_name == 'ohgbl-yelp1':
+            dataset = OHGBDataset(name=dataset_name, raw_dir='')
+            g = dataset[0].long()
+            self.target_link = [('user', 'user-buy-business', 'business')]
+            self.target_link_r = [('business', 'user-buy-business-rev', 'user')]
+        elif dataset_name == 'ohgbl-yelp2':
+            dataset = OHGBDataset(name=dataset_name, raw_dir='')
+            g = dataset[0].long()
+            self.target_link = [('business', 'described-with', 'phrase')]
+            self.target_link_r = [('business', 'described-with-rev', 'phrase')]
+        self.g = g
+    
+    
 def build_graph_from_triplets(num_nodes, num_rels, triplets):
     """ Create a DGL graph. The graph is bidirectional because RGCN authors
         use reversed relations.
@@ -430,48 +466,100 @@ def comp_deg_norm(g):
 
 @register_dataset('kg_link_prediction')
 class KG_LinkPrediction(LinkPredictionDataset):
-    def __init__(self, dataset_name):
-        super(KG_LinkPrediction, self).__init__()
+    """
+    From `RGCN <https://arxiv.org/abs/1703.06103>`_, WN18 & FB15k face a data leakage.
+    """
+    def __init__(self, dataset_name, *args, **kwargs):
+        super(KG_LinkPrediction, self).__init__(*args, **kwargs)
         if dataset_name in ['wn18', 'FB15k', 'FB15k-237']:
             dataset = load_data(dataset_name)
-            self.category = '_N'
-            self.num_rels = dataset.num_rels * 2
-            # include inverse edge
+            g = dataset[0]
+            self.num_rels = dataset.num_rels
             self.num_nodes = dataset.num_nodes
-            self.homo_g = dataset[0]
-            self.g = self.homo_to_hetero(dataset[0])
-            # self.g = self.build_g(dataset.train)
-            # self.dataset = dataset
 
-    def get_triples_directed(self, mask_mode):
-        if mask_mode == 'train_mask':
-            data = self.dataset.train
-        elif mask_mode == 'val_mask':
-            data = self.dataset.test
-        elif mask_mode == 'test_mask':
-            data = self.dataset.test
-        s = th.LongTensor(data[:, 0])
-        r = th.LongTensor(data[:, 1])
-        o = th.LongTensor(data[:, 2])
-        return th.stack([s, r, o])
+            self.train_hg, self.train_triplets = self._build_hg(g, 'train')
+            self.valid_hg, self.valid_triplets = self._build_hg(g, 'valid')
+            self.test_hg, self.test_triplets = self._build_hg(g, 'test')
 
-    def get_triples(self, mask_mode):
+            self.g = self.train_hg
+            self.category = '_N'
+            self.target_link = self.test_hg.canonical_etypes
+
+    def _build_hg(self, g, mode):
+        sub_g = dgl.edge_subgraph(g, g.edata[mode+'_edge_mask'], relabel_nodes=False)
+        src, dst = sub_g.edges()
+        etype = sub_g.edata['etype']
+
+        edge_dict = {}
+        for i in range(self.num_rels):
+            mask = (etype == i)
+            edge_name = ('_N', str(i), '_N')
+            edge_dict[edge_name] = (src[mask], dst[mask])
+        hg = dgl.heterograph(edge_dict, {'_N': self.num_nodes})
+
+        return hg, th.stack((src, etype, dst)).T
+
+    def modify_size(self, eval_percent, dataset_type):
+        if dataset_type == 'valid':
+            self.valid_triplets = th.tensor(random.sample(self.valid_triplets.tolist(), math.ceil(self.valid_triplets.shape[0]*eval_percent)))
+        elif dataset_type == 'test':
+            self.test_triplets = th.tensor(random.sample(self.test_triplets.tolist(), math.ceil(self.test_triplets.shape[0]*eval_percent)))
+
+    def get_graph_directed_from_triples(self, triples, format='graph'):
+        s = th.LongTensor(triples[:, 0])
+        r = th.LongTensor(triples[:, 1])
+        o = th.LongTensor(triples[:, 2])
+        if format == 'graph':
+            edge_dict = {}
+            for i in range(self.num_rels):
+                mask = (r == i)
+                edge_name = (self.category, str(i), self.category)
+                edge_dict[edge_name] = (s[mask], o[mask])
+            return dgl.heterograph(edge_dict, {self.category: self.num_nodes})
+
+    def get_triples(self, g, mask_mode):
         '''
         :param g:
         :param mask_mode: should be one of 'train_mask', 'val_mask', 'test_mask
         :return:
         '''
-        g = self.homo_g
         edges = g.edges()
         etype = g.edata['etype']
         mask = g.edata.pop(mask_mode)
         return th.stack((edges[0][mask], etype[mask], edges[1][mask]))
 
-    def homo_to_hetero(self, g):
+    def get_all_triplets(self, dataset):
+        train_data = th.LongTensor(dataset.train)
+        valid_data = th.LongTensor(dataset.valid)
+        test_data = th.LongTensor(dataset.test)
+        return train_data, valid_data, test_data
+
+    def get_split(self):
+        return self.train_hg, self.valid_hg, self.test_hg, None, None
+
+    def split_graph(self, g, mode='train'):
+        """
+
+        Parameters
+        ----------
+        g: DGLGraph
+            a homogeneous graph fomat
+        mode: str
+            split the subgraph according to the mode
+
+        Returns
+        -------
+        hg: DGLHeterograph
+        """
         edges = g.edges()
         etype = g.edata['etype']
-        train_mask = g.edata['train_mask']
-        hg = self.build_graph((edges[0][train_mask], edges[1][train_mask]), etype[train_mask])
+        if mode == 'train':
+            mask = g.edata['train_mask']
+        elif mode == 'valid':
+            mask = g.edata['valid_edge_mask']
+        elif mode == 'test':
+            mask = g.edata['test_edge_mask']
+        hg = self.build_graph((edges[0][mask], edges[1][mask]), etype[mask])
         return hg
 
     def build_graph(self, edges, etype):

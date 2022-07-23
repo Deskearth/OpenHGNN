@@ -28,7 +28,7 @@ class NSHETrainer(BaseFlow):
 
         self.hg = self.task.get_graph().to(self.device)
 
-        self.model = build_model(self.model_name).build_model_from_args(self.args, self.hg)
+        self.model = build_model(self.model).build_model_from_args(self.args, self.hg)
 
         self.optimizer = th.optim.Adam(self.model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
 
@@ -133,7 +133,7 @@ class NSHETrainer(BaseFlow):
             logits = logits if logits else node_emb
             logits = logits[self.category].to('cpu')
             if self.args.task == 'node_classification':
-                metric = self.task.evaluate(logits, 'f1_lr')
+                metric = self.task.downstream_evaluate(logits, 'f1_lr')
                 return metric
             # elif self.args.task == 'link_prediction':
             #     metric = self.task.evaluate(logits, 'academic_lp')

@@ -9,8 +9,6 @@ import dgl.function as fn
 
 class AttConv(nn.Module):
     """
-    Description
-    -----------
     Attention-based convolution was introduced in `Hybrid Micro/Macro Level Convolution for Heterogeneous Graph Learning
     <https://arxiv.org/abs/>`__
     and mathematically is defined as follows:
@@ -51,14 +49,20 @@ class AttConv(nn.Module):
                 src_node_transformation_weight: nn.Parameter,
                 src_nodes_attention_weight: nn.Parameter):
         r"""Compute graph attention network layer.
+        
         Parameters
         ----------
-        graph : specific relational DGLHeteroGraph
-        feat : pair of torch.Tensor
+        graph: 
+            specific relational DGLHeteroGraph
+        feat: pair of torch.Tensor
             The pair contains two tensors of shape (N_{in}, D_{in_{src}})` and (N_{out}, D_{in_{dst}}).
-        dst_node_transformation_weight: Parameter (input_dst_dim, n_heads * hidden_dim)
-        src_node_transformation_weight: Parameter (input_src_dim, n_heads * hidden_dim)
-        src_nodes_attention_weight: Parameter (n_heads, 2 * hidden_dim)
+        dst_node_transformation_weight: 
+            Parameter (input_dst_dim, n_heads * hidden_dim)
+        src_node_transformation_weight: 
+            Parameter (input_src_dim, n_heads * hidden_dim)
+        src_nodes_attention_weight: 
+            Parameter (n_heads, 2 * hidden_dim)
+
         Returns
         -------
         torch.Tensor, shape (N, H, D_out)` where H is the number of heads, and D_out is size of output feature.

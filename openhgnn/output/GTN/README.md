@@ -1,35 +1,37 @@
-# GTN[NeurIPS2019]
+# GTN[NeurIPS2019] & fastGTN
 
-Paper: [Graph Transformer Networks](https://arxiv.org/abs/1911.06455)
+Paper: [[GTN] Graph Transformer Networks](https://arxiv.org/abs/1911.06455)
 
-Extension Paper: [Graph Transformer Networks: Learning Meta-path Graphs to Improve GNNs](https://arxiv.org/abs/2106.06218.pdf)
+Extension Paper: [[fastGTN] Graph Transformer Networks: Learning Meta-path Graphs to Improve GNNs](https://arxiv.org/abs/2106.06218.pdf)
 
 Code from author: https://github.com/seongjunyun/Graph_Transformer_Networks
 
-Note: [TODO]The authors proposed the FastGTN recently and it will be supported in future.
-
 ### How to run
 
-Clone the Openhgnn-DGL
+Clone the OpenHGNN
 
 ```bash
+# Run GTN
 python main.py -m GTN -t node_classification -d acm4GTN -g 0 --use_best_config
+# Run the fastGTN
+python main.py -m fastGTN -t node_classification -d acm4GTN -g 0 --use_best_config
 ```
 
 If you do not have gpu, set -gpu -1.
 
 ##### Candidate dataset: 
 
-​	acm4GTN/imdb4GTN
+​	acm4GTN/imdb4GTN/dblp4GTN
 
 ### Performance
 
-Node classification 
+Node classification
 
-| Node classification | acm4GTN | imdb4GTN |
-| ------------------- | ------- | -------- |
-| paper               | 92.68   | 60.92    |
-| OpenHGNN            | 92.22   | 61.58    |
+| Node classification(F1 score) | acm4GTN                   | imdb4GTN                  | dblp4GTN                                 |
+|-------------------------------|---------------------------|---------------------------|------------------------------------------|
+| paper[GTN]                    | 92.68                     | 60.92                     | 94.18                                    |
+| OpenHGNN[GTN]                 | Macro: 92.03 Micro: 92.00 | Macro: 56.97 Micro: 58.61 | 87.33(OOM on Tesla T4(16GB), cpu result) |
+| OpenHGNN[fastGTN]             | Macro: 92.92 Micro: 92.85 | Macro: 60.62 Micro: 62.59 | Macro: 90.39 Micro: 91.39                |
 
 ### TrainerFlow: node_classification
 
@@ -47,9 +49,11 @@ The model is  trained in semi-supervisied node classification.
 
 ### Dataset
 
-Supported dataset: acm4GTN, imdb4GTN
+Supported dataset: acm4GTN, imdb4GTN, dblp4ACM
 
 Note: Every node in dataset should have the same features dimension.
+
+[Dataset Description](https://openhgnn.readthedocs.io/en/latest/api/dataset.html#hgb-node-classification-dataset)
 
 #### [acm4GTN](../../dataset/#ACM)/[imdb4GTN](../../dataset/#IMDB)
 

@@ -1,6 +1,7 @@
 import importlib
 from .NEW_model import MLP_follow_model
 from .base_model import BaseModel
+from torch import nn
 import sys
 sys.path.append("..")
 
@@ -45,6 +46,12 @@ def try_import_model(model):
 
 
 def build_model(model):
+    if isinstance(model, nn.Module):
+        if not hasattr(model, 'build_model_from_args'):
+            def build_model_from_args(args, hg):
+                return model
+            model.build_model_from_args = build_model_from_args
+        return model
     if not try_import_model(model):
         exit(1)
     return MODEL_REGISTRY[model]
@@ -56,11 +63,11 @@ SUPPORTED_MODELS = {
     'RGCN': 'openhgnn.models.RGCN',
     "RGAT": 'openhgnn.models.RGAT',
     'RSHN': 'openhgnn.models.RSHN',
-    'Metapath2vec': 'openhgnn.models.Metapath2vec',
+    'Metapath2vec': 'openhgnn.models.SkipGram',
+    'HERec': 'openhgnn.models.SkipGram',
     'HAN': 'openhgnn.models.HAN',
-    #'HGT': 'openhgnn.models.HGT',
     'HeCo': 'openhgnn.models.HeCo',
-    'HGT': 'openhgnn.models.HGT_hetero',
+    'HGT': 'openhgnn.models.HGT',
     'GTN': 'openhgnn.models.GTN_sparse',
     'fastGTN': 'openhgnn.models.fastGTN',
     'MHNF': 'openhgnn.models.MHNF',
@@ -78,4 +85,74 @@ SUPPORTED_MODELS = {
     'homo_GNN': 'openhgnn.models.homo_GNN',
     'general_HGNN': 'openhgnn.models.general_HGNN',
     'HDE': 'openhgnn.models.HDE',
+    'SimpleHGN': 'openhgnn.models.SimpleHGN',
+    'GATNE-T': 'openhgnn.models.GATNE',
+    'HetSANN': 'openhgnn.models.HetSANN',
+    'HGAT': 'openhgnn.models.HGAT',
+    'ieHGCN': 'openhgnn.models.ieHGCN',
+    'TransE': 'openhgnn.models.TransE',
+    'TransH': 'openhgnn.models.TransH',
+    'TransR': 'openhgnn.models.TransR',
+    'TransD': 'openhgnn.models.TransD',
 }
+
+from .CompGCN import CompGCN
+from .HetGNN import HetGNN
+from .RGCN import RGCN
+from .RGAT import RGAT
+from .RSHN import RSHN
+from .SkipGram import SkipGram
+from .HAN import HAN
+from .HeCo import HeCo
+from .HGT import HGT
+from .GTN_sparse import GTN
+from .fastGTN import fastGTN
+from .MHNF import MHNF
+from .MAGNN import MAGNN
+from .HeGAN import HeGAN
+from .NSHE import  NSHE
+from .NARS import NARS
+from .RHGNN import RHGNN
+from .HPN import HPN
+from .KGCN import KGCN
+from .SLiCE import SLiCE
+from .HGSL import HGSL
+from .homo_GNN import homo_GNN
+from .general_HGNN import general_HGNN
+from .HDE import HDE
+from .SimpleHGN import SimpleHGN
+from .HetSANN import HetSANN
+from .ieHGCN import ieHGCN
+from .HGAT import HGAT
+from .GATNE import GATNE
+
+__all__ = [
+    'BaseModel',
+    'CompGCN',
+    'HetGNN',
+    'RGCN',
+    'RGAT',
+    'RSHN',
+    'SkipGram',
+    'HAN',
+    'HeCo',
+    'HGT',
+    'GTN',
+    'fastGTN',
+    'MHNF',
+    'MAGNN',
+    'HeGAN',
+    'NSHE',
+    'NARS',
+    'RHGNN',
+    'HPN',
+    'KGCN',
+    'SLiCE',
+    'HGSL',
+    'homo_GNN',
+    'general_HGNN',
+    'HDE',
+    'SimpleHGN',
+    'GATNE'
+]
+classes = __all__

@@ -13,8 +13,8 @@ class RecommendationDataset(BaseDataset):
     """
 
     """
-    def __init__(self,):
-        super(RecommendationDataset, self).__init__()
+    def __init__(self,*args, **kwargs):
+        super(RecommendationDataset, self).__init__(*args, **kwargs)
         self.meta_paths_dict = None
 
 
@@ -23,13 +23,13 @@ class KGCN_Recommendation(RecommendationDataset):
     r"""
     Which is used in KGCN.
     """
-    def __init__(self, dataset_name):
-            super(RecommendationDataset, self).__init__()
+    def __init__(self, dataset_name, *args, **kwargs):
+            super(RecommendationDataset, self).__init__(*args, **kwargs)
             dataset = MultiGraphDataset(name=dataset_name, raw_dir='')
             self.g = dataset[0].long()
             self.g_1 = dataset[1].long()
 
-    def get_idx(self, validation=True):
+    def get_split(self, validation=True):
         ratingsGraph = self.g_1
         n_edges = ratingsGraph.num_edges()
         random_int = th.randperm(n_edges)
@@ -48,8 +48,8 @@ class KGCN_Recommendation(RecommendationDataset):
 
 @register_dataset('hin_recommendation')
 class HINRecommendation(RecommendationDataset):
-    def __init__(self, dataset_name):
-        super(HINRecommendation, self).__init__()
+    def __init__(self, dataset_name, *args, **kwargs):
+        super(HINRecommendation, self).__init__(*args, **kwargs)
         self.dataset_name = dataset_name
         self.num_neg = 20
         #self.neg_dir = os.path.join(self.raw_dir, dataset_name, 'neg_{}.bin'.format(self.num_neg))
@@ -98,7 +98,7 @@ class HINRecommendation(RecommendationDataset):
     #     from dgl.data.utils import save_graphs
     #     save_graphs(f"./openhgnn/dataset/{self.dataset_name}.bin", hg)
 
-    def get_idx(self, validation=True):
+    def get_split(self, validation=True):
         test_mask = self.g.edges[self.target_link].data['test_mask'].squeeze()
         test_index = th.nonzero(test_mask).squeeze()
         test_edge = self.g.find_edges(test_index, self.target_link)

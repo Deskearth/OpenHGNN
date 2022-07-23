@@ -1,5 +1,8 @@
+*.mo
+
 # IDE
 .idea
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -10,15 +13,23 @@ __pycache__/
 *.zip
 *.bin
 *.pt
+*.log
+*.mat
 
 # numpy files
 *.npy
 *.npz
+
 # yaml files
-*.yaml
+#*.yaml
 
 .DS_Store
 *.txt
 
 # visualization figure files
 *.jpg
+
+*.pkl
+
+# history
+.history

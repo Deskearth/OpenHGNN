@@ -58,7 +58,6 @@ class SkipGramBatchSampler(IterableDataset):
                 neg_tails[0][mask] = th.randint(0, self.hg.number_of_nodes(ntype), size=neg_tails[0][mask].shape)
             yield heads, tails, neg_tails
 
-
     def pre_process(self):
         heads = th.arange(self.g.number_of_nodes())
         traces, _ = dgl.sampling.random_walk(self.g, heads, length=self.window_size)
@@ -72,7 +71,6 @@ class SkipGramBatchSampler(IterableDataset):
                 mask_t = (tails[1] == j)
                 edge = (self.ntypes[i], self.ntypes[i] + '-' + self.ntypes[j], self.ntypes[j])
                 self.edge_dict[edge] = (heads[0][mask_h], tails[0][mask_t])
-
 
     def traces2pos(self, traces, window_size):
         '''
@@ -114,7 +112,6 @@ class NeighborSampler(object):
         self.num_nodes = num_nodes
         self.sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
         self.device = device
-
 
     def build_hetero_graph(self, heads, tails):
         edge_dict = {}
@@ -176,15 +173,18 @@ class HetGNNCollator(object):
         heads, tails, neg_tails = batches[0]
         # Construct multilayer neighborhood via PinSAGE...
         pos_graph, neg_graph, blocks = self.sampler.sample_from_item_pairs(heads, tails, neg_tails)
-        assign_features_to_blocks(blocks, self.g, self.g.ntypes)
+        # blocks return dict(src_node_feature), dict(dst_node_feature), MFGs
+        assign_features_to_blocks(blocks[2], self.g, self.g.ntypes)
 
-        return pos_graph, neg_graph, blocks
+        return pos_graph, neg_graph, blocks[2]
 
     # def collate_test(self, samples):
     #     batch = th.LongTensor(samples)
     #     blocks = self.sampler.sample_blocks(batch)
     #     assign_features_to_blocks(blocks, self.g, self.g.ntypes)
     #     return blocks
+    
+    
 class hetgnn_graph():
     """
 

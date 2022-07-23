@@ -12,17 +12,17 @@ Welcome to OpenHGNN's documentation!
    :hidden:
    :glob:
 
-   install/index
-   install/usage
+   get_started/index
+   get_started/quick_start
 
 .. toctree::
    :maxdepth: 2
    :caption: Advanced Materials
    :hidden:
-   :titlesonly:
    :glob:
 
-   pipeline/index
+   advanced_materials/index
+   advanced_materials/developer_guide
 
 .. toctree::
    :maxdepth: 1
@@ -30,10 +30,6 @@ Welcome to OpenHGNN's documentation!
    :hidden:
    :glob:
 
-   api/openhgnn.dataset
-   api/openhgnn.models
-   api/openhgnn.tasks
-   api/openhgnn.trainerflow
    api/dataset
    api/task
    api/layer
@@ -41,7 +37,7 @@ Welcome to OpenHGNN's documentation!
    api/trainerflow
 
 
-This is an open-source toolkit for Heterogeneous Graph Neural Network(OpenHGNN) based on `DGL [Deep Graph Library] <https://github.com/dmlc/dgl>`_.
+This is an open-source toolkit for Heterogeneous Graph Neural Network(OpenHGNN) based on `DGL [Deep Graph Library] <https://github.com/dmlc/dgl>`_ and `PyTorch <https://pytorch.org/>`_.
 We integrate SOTA models of heterogeneous graph.
 
 Key Features

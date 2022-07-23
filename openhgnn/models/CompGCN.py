@@ -6,26 +6,24 @@ from . import BaseModel, register_model
 from openhgnn.layers.micro_layer import CompConv
 from ..utils.dgl_graph import edata_in_out_mask
 from ..utils import get_nodes_dict
-
-'''
-Here, we present the implementation details for each task used for evaluation in the paper. 
-For all the tasks, we used COMPGCN build on PyTorch geometric framework (Fey & Lenssen, 2019).
-
-Link Prediction: For evaluation, 200-dimensional embeddings for node and relation embeddings are used. 
-    For selecting the best model we perform a hyperparameter search using the validation data over the values listed in Table 8. 
-    For training link prediction models, we use the standard binary cross entropy loss with label smoothing Dettmers et al. (2018).
-
-Node Classification: Following Schlichtkrull et al. (2017), we use 10% training data as validation for selecting the best model for both the datasets. 
-    We restrict the number of hidden units to 32. We use cross-entropy loss for training our model.
-
-For all the experiments, training is done using Adam optimizer (Kingma & Ba, 2014) and Xavier initialization (Glorot & Bengio, 2010) is used for initializing parameters.
-'''
-
+from ..utils.utils import ccorr
 
 @register_model('CompGCN')
 class CompGCN(BaseModel):
     """
     The models of the simplified CompGCN, without using basis vector, for a heterogeneous graph.
+
+    Here, we present the implementation details for each task used for evaluation in the paper. 
+    For all the tasks, we used COMPGCN build on PyTorch geometric framework (Fey & Lenssen, 2019).
+
+    Link Prediction: For evaluation, 200-dimensional embeddings for node and relation embeddings are used. 
+    For selecting the best model we perform a hyperparameter search using the validation data over the values listed in Table 8. 
+    For training link prediction models, we use the standard binary cross entropy loss with label smoothing Dettmers et al. (2018).
+
+    Node Classification: Following Schlichtkrull et al. (2017), we use 10% training data as validation for selecting the best model for both the datasets. 
+    We restrict the number of hidden units to 32. We use cross-entropy loss for training our model.
+
+    For all the experiments, training is done using Adam optimizer (Kingma & Ba, 2014) and Xavier initialization (Glorot & Bengio, 2010) is used for initializing parameters.
     """
 
     @classmethod
@@ -152,7 +150,7 @@ class CompGraphConvLayer(nn.Module):
 
             wdict = {}
             for i, etype in enumerate(self.rel_names):
-                if etype[1][:4] == 'rev-':
+                if etype[:4] == 'rev-' or etype[-4:] == '-rev':
                     W = self.W_I
                 else:
                     W = self.W_O
@@ -172,7 +170,7 @@ class CompGraphConvLayer(nn.Module):
                 elif self.comp_fn == 'mul':
                     h_self = self.W_S(inputs_dst[n] * r_feats[-1])
                 elif self.comp_fn == 'ccorr':
-                    h_self = self.W_S(inputs_dst[n], r_feats[-1])
+                    h_self = self.W_S(ccorr(inputs_dst[n], r_feats[-1]))
                 else:
                     raise Exception('Only supports sub, mul, and ccorr')
                 h_self.add_(emd)
@@ -180,7 +178,8 @@ class CompGraphConvLayer(nn.Module):
 
                 # Use batch norm
                 if self.batchnorm:
-                    h_self = self.bn(h_self)
+                    if h_self.shape[0] > 1:
+                        h_self = self.bn(h_self)
 
                 # Use drop out
                 n_out_feats = self.dropout(h_self)
